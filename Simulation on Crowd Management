@@ -1,0 +1,68 @@
+import time
+from datetime import datetime
+import random
+
+# Constants
+MAX_BUS_CAPACITY = 50
+THRESHOLD_HIGH = 0.8  # 80% capacity triggers adding buses
+THRESHOLD_LOW = 0.3   # 30% capacity triggers removing buses
+PEAK_INTERVAL = 10    # Peak hours: every 10 minutes
+OFF_PEAK_INTERVAL = 15  # Off-peak hours: every 15 minutes
+INITIAL_BUSES = 3
+SIMULATION_SPEED = 1   # 1 second simulates 1 minute
+
+# Function to check if the current time is peak hours
+def peak_hours():
+    now = datetime.now()
+    hour = now.hour
+    # Peak hours: 7 AM - 9 AM and 5 PM - 7 PM
+    return (7 <= hour < 9) or (17 <= hour < 19)
+
+# Function to simulate passenger count for each bus
+def passenger_count(buses):
+    return [random.randint(0, MAX_BUS_CAPACITY) for _ in range(buses)]
+
+# Function to calculate average occupancy
+def average_capacity(passenger_counts):
+    total_passengers = sum(passenger_counts)
+    total_capacity = len(passenger_counts) * MAX_BUS_CAPACITY
+    return total_passengers / total_capacity
+
+# Adjust the number of buses dynamically
+def bus_scheduling(current_buses, average_occupancy):
+    if average_occupancy > THRESHOLD_HIGH:
+        print("High occupancy detected. Adding a bus to the route.")
+        return current_buses + 1
+    elif average_occupancy < THRESHOLD_LOW and current_buses > 1:
+        print("Low occupancy detected. Removing a bus from the route.")
+        return current_buses - 1
+    return current_buses
+
+# Main simulation loop
+def main():
+    current_buses = INITIAL_BUSES
+    print("Dynamic Bus Scheduling System for Route 18")
+    print("------------------------------------------------")
+
+    while True:
+        interval = PEAK_INTERVAL if peak_hours() else OFF_PEAK_INTERVAL
+        print(f"Current Time: {datetime.now().strftime('%H:%M:%S')}")
+        print(f"Peak Hour: {'Yes' if peak_hours() else 'No'}")
+        print(f"Buses Scheduled: {current_buses}")
+
+        # Simulate passenger counts
+        passenger_counts = passenger_count(current_buses)
+        print(f"Passenger Counts: {passenger_counts}")
+
+        # Calculate average occupancy
+        average_occupancy = average_capacity(passenger_counts)
+        print(f"Average Occupancy: {average_occupancy:.2f}")
+
+        # Adjust buses if needed
+        current_buses = bus_scheduling(current_buses, average_occupancy)
+
+        print("------------------------------------------------")
+        time.sleep(interval * SIMULATION_SPEED)  # Simulate fast-forwarded time
+
+# Call the main function directly in Jupyter
+main()
