@@ -1,0 +1,87 @@
+import sqlite3
+import datetime
+import random
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+# Create or connect to SQLite database
+db_file = "bus_performance_model.db"
+conn = sqlite3.connect(db_file)
+cursor = conn.cursor()
+
+# Create table for storing performance data
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS bus_statistics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bus_id INTEGER,
+    route_id INTEGER,
+    stop_id INTEGER,
+    timestamp DATETIME,
+    waiting_time INTEGER,
+    resource_usage REAL,
+    passengers_boarded INTEGER,
+    passengers_alighted INTEGER,
+    crowd_density INTEGER
+)
+''')
+
+# Function to log statistics
+def log_bus_statistics(bus_id, route_id, stop_id, waiting_time, resource_usage, passengers_boarded, passengers_alighted, crowd_density):
+    timestamp = datetime.datetime.now()
+    cursor.execute('''
+    INSERT INTO bus_statistics (
+        bus_id, route_id, stop_id, timestamp, waiting_time, resource_usage, passengers_boarded, passengers_alighted, crowd_density
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (bus_id, route_id, stop_id, timestamp, waiting_time, resource_usage, passengers_boarded, passengers_alighted, crowd_density))
+    conn.commit()
+
+# Simulating data collection
+for bus_id in range(1, 4):  # 3 buses
+    for route_id in range(1, 2):  # 1 route
+        for stop_id in range(1, 6):  # 5 stops
+            waiting_time = random.randint(1, 15)  # Minutes
+            resource_usage = round(random.uniform(50, 100), 2)  # Percent
+            passengers_boarded = random.randint(1, 50)
+            passengers_alighted = random.randint(1, 25)
+            crowd_density = random.randint(1, 100)  # Percent
+            log_bus_statistics(bus_id, route_id, stop_id, waiting_time, resource_usage, passengers_boarded, passengers_alighted, crowd_density)
+
+# Query data for analysis
+cursor.execute('SELECT * FROM bus_statistics LIMIT 10')
+sample_data = cursor.fetchall()
+
+# Aggregate statistics
+cursor.execute('''
+SELECT 
+    AVG(waiting_time) AS avg_waiting_time,
+    AVG(resource_usage) AS avg_resource_usage,
+    MAX(crowd_density) AS peak_crowd_density,
+    SUM(passengers_boarded) AS total_boarded,
+    SUM(passengers_alighted) AS total_alighted
+FROM bus_statistics
+''')
+aggregate_stats = cursor.fetchone()
+
+# Predictive model to adjust bus frequency
+# Train a simple linear regression model (for demonstration)
+historical_data = np.array([
+    [10, 100],  # Low passenger count, long interval (10 minutes)
+    [20, 10],   # High passenger count, short interval (10 buses)
+    [30, 5],    # Very high passenger count, very short interval (5 buses)
+])
+X = historical_data[:, 0].reshape(-1, 1)  # Passenger count
+y = historical_data[:, 1]  # Interval (in minutes)
+model = LinearRegression()
+model.fit(X, y)
+
+# Predict interval based on new passenger count
+predicted_interval = model.predict([[aggregate_stats[3] / 10]])[0]  # Assuming aggregate passenger count for all buses
+predicted_interval = max(5, min(predicted_interval, 15))  # Constrain between 5 and 15 minutes
+
+# Output predicted adjustment
+adjustment = f"Predicted interval: {predicted_interval:.2f} minutes based on passenger count {aggregate_stats[3]}."
+
+# Close the connection
+conn.close()
+
+sample_data, aggregate_stats, db_file, adjustment
